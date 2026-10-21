@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Free LLM Chatbot</title>
+
+    <style>
+
+        body {
+
+            font-family: Arial, sans-serif;
+
+            background: #eef2f7;
+
+            margin: 0;
+
+            padding: 20px;
+
+        }
+
+        .container {
+
+            max-width: 700px;
+
+            margin: 30px auto;
+
+            background: white;
+
+            padding: 20px;
+
+            border-radius: 12px;
+
+        }
+
+        h1 {
+
+            text-align: center;
+
+            color: #2563eb;
+
+        }
+
+        #chat-box {
+
+            height: 350px;
+
+            overflow-y: auto;
+
+            border: 1px solid #ddd;
+
+            padding: 12px;
+
+            margin-bottom: 15px;
+
+        }
+
+        .message {
+
+            padding: 10px;
+
+            margin: 8px 0;
+
+            border-radius: 8px;
+
+            white-space: pre-wrap;
+
+            overflow-wrap: anywhere;
+
+        }
+
+        .user {
+
+            background: #dbeafe;
+
+        }
+
+        .assistant {
+
+            background: #dcfce7;
+
+        }
+
+        textarea {
+
+            width: 98%;
+
+            padding: 8px;
+
+        }
+
+        button {
+
+            padding: 10px 18px;
+
+            margin-top: 10px;
+
+            cursor: pointer;
+
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+    <div class="container">
+
+        <h1>Free LLM Chatbot</h1>
+
+        <p>Ask your questions to the AI assistant.</p>
+
+        <div id="chat-box"></div>
+
+        <label for="message">Enter your message:</label>
+
+        <textarea id="message" rows="3"
+
+            placeholder="Type your question here..."></textarea>
+
+        <p>
+
+            <label for="temperature">Temperature:</label>
+
+            <input type="range" id="temperature"
+
+                min="0" max="2" step="0.1" value="0.7">
+
+            <span id="temp-value">0.7</span>
+
+        </p>
+
+        <button id="send-button">Send</button>
+
+        <button id="clear-button">Clear Chat</button>
+
+        <p id="status"></p>
+
+    </div>
+
+    <script>
+
+        const chatBox = document.getElementById("chat-box");
+
+        const input = document.getElementById("message");
+
+        const status = document.getElementById("status");
+
+        const temperature = document.getElementById("temperature");
+
+        const history = [];
+
+        temperature.addEventListener("input", function () {
+
+            document.getElementById("temp-value").textContent =
+
+                temperature.value;
+
+        });
+
+        function addMessage(role, content) {
+
+            const messageDiv = document.createElement("div");
+
+            messageDiv.className = "message " + role;
+
+            messageDiv.textContent =
+
+                (role === "user" ? "You: " : "AI: ") + content;
+
+            chatBox.appendChild(messageDiv);
+
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+        }
+
+        async function sendMessage() {
+
+            const message = input.value.trim();
+
+            if (!message) {
+
+                status.textContent = "Please type a message.";
+
+                return;
+
+            }
+
+            input.value = "";
+
+            addMessage("user", message);
+
+            status.textContent = "AI is thinking...";
+
+            try {
+
+                const response = await fetch("/api/chat", {
+
+                    method: "POST",
+
+                    headers: {
+
+                        "Content-Type": "application/json"
+
+                    },
+
+                    body: JSON.stringify({
+
+                        message: message,
+
+                        history: history.slice(-5),
+
+                        temperature: Number(temperature.value)
+
+                    })
+
+                });
+
+                if (!response.ok) {
+
+                    throw new Error("Server error");
+
+                }
+
+                const data = await response.json();
+
+                addMessage("assistant", data.reply);
+
+                history.push(
+
+                    { role: "user", content: message },
+
+                    { role: "assistant", content: data.reply }
+
+                );
+
+                status.textContent = "Model: " + data.model_used;
+
+            } catch (error) {
+
+                status.textContent =
+
+                    "Connection error. Check Python and Ollama.";
+
+            }
+
+        }
+
+        document.getElementById("send-button")
+
+            .addEventListener("click", sendMessage);
+
+        input.addEventListener("keydown", function (event) {
+
+            if (event.key === "Enter" && !event.shiftKey) {
+
+                event.preventDefault();
+
+                sendMessage();
+
+            }
+
+        });
+
+        document.getElementById("clear-button")
+
+            .addEventListener("click", function () {
+
+                chatBox.replaceChildren();
+
+                history.length = 0;
+
+                status.textContent = "Chat cleared.";
+
+            });
+
+    </script>
+
+</body>
+
+</html>
